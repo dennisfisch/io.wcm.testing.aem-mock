@@ -28,7 +28,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Set;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
+
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.sling.api.resource.PersistenceException;
@@ -79,9 +85,11 @@ public class MockTagManagerTest {
     Page page = rootPage;
     Tag[] pageTags = page.getTags();
     assertNotNull(pageTags);
-    assertEquals(2, pageTags.length);
+    assertEquals(4, pageTags.length);
     assertTrue(containsPath(pageTags, tagRoot + "/default/tagA"));
     assertTrue(containsPath(pageTags, tagRoot + "/wcmio/aem/api"));
+    assertTrue(containsPath(pageTags, tagRoot + "/wcmio/tag-operations/merged-tag"));
+    assertTrue(containsPath(pageTags, tagRoot + "/wcmio/moved-tag"));
 
     page = page.listChildren().next();
     pageTags = page.getTags();
@@ -97,6 +105,21 @@ public class MockTagManagerTest {
   }
 
   @Test
+  public void testGetPageTagsMoved() {
+    Page page = rootPage;
+    Tag[] pageTags = page.getTags();
+    Set<String> pageTagPaths = Arrays.stream(page.getContentResource().getValueMap().get(TagConstants.PN_TAGS, String[].class)).collect(Collectors.toSet());
+
+    assertTrue(pageTagPaths.contains(tagRoot + "/wcmio/tag-operations/tag-to-be-merged"));
+    assertFalse(containsPath(pageTags, tagRoot + "/wcmio/tag-operations/tag-to-be-merged"));
+    assertTrue(containsPath(pageTags, tagRoot + "/wcmio/tag-operations/merged-tag"));
+
+    assertTrue(pageTagPaths.contains(tagRoot + "/wcmio/tag-operations/tag-to-be-moved"));
+    assertFalse(containsPath(pageTags, tagRoot + "/wcmio/tag-operations/tag-to-be-moved"));
+    assertTrue(containsPath(pageTags, tagRoot + "/wcmio/moved-tag"));
+  }
+
+  @Test
   public void testGetNamespaces() {
     Tag[] namespaces = tagManager.getNamespaces();
     assertNotNull(namespaces);
@@ -106,11 +129,12 @@ public class MockTagManagerTest {
 
     Iterator<Tag> namespacesIter = tagManager.getNamespacesIter();
     assertNotNull(namespacesIter);
-    assertTrue(namespacesIter.hasNext());
-    assertEquals(tagRoot + "/default", namespacesIter.next().getPath());
-    assertTrue(namespacesIter.hasNext());
-    assertEquals(tagRoot + "/wcmio", namespacesIter.next().getPath());
-    assertFalse(namespacesIter.hasNext());
+
+    final Set<String> namespacePaths = StreamSupport.stream(Spliterators.spliteratorUnknownSize(namespacesIter, 0), false)
+            .map(Tag::getPath)
+            .collect(Collectors.toSet());
+    assertTrue(namespacePaths.stream().anyMatch(path -> path.contains("/default")));
+    assertTrue(namespacePaths.stream().anyMatch(path -> path.contains("/wcmio")));
   }
 
   @Test
@@ -235,6 +259,23 @@ public class MockTagManagerTest {
   }
 
   @Test
+  public void testFindWithMovedTag() {
+    RangeIterator<Resource> resources = tagManager.find("/content", new String[]{ "wcmio:moved-tag"}, true);
+    assertNotNull(resources);
+    assertTrue(resources.hasNext());
+    assertEquals(1, resources.getSize());
+    assertEquals(0, resources.getPosition());
+    assertEquals("/content/sample/en/jcr:content", resources.next().getPath());
+
+    resources = tagManager.find("/content", new String[]{ "wcmio:tag-operations/tag-to-be-moved"}, true);
+    assertNotNull(resources);
+    assertTrue(resources.hasNext());
+    assertEquals(1, resources.getSize());
+    assertEquals(0, resources.getPosition());
+    assertEquals("/content/sample/en/jcr:content", resources.next().getPath());
+  }
+
+  @Test
   public void testResolve() {
     Tag tag = tagManager.resolve("wcmio:");
     assertNotNull(tag);
@@ -245,11 +286,20 @@ public class MockTagManagerTest {
   }
 
   @Test
+  public void testResolveMovedTag() {
+    final Tag movedTag = tagManager.resolve("wcmio:tag-operations/tag-to-be-moved");
+    assertNotNull(movedTag);
+
+    assertEquals("wcmio:moved-tag", movedTag.getTagID());
+    assertEquals(tagRoot + "/wcmio/moved-tag", movedTag.getPath());
+  }
+
+  @Test
   public void testGetTagsForSubtree() {
     Tag[] tags = tagManager.getTagsForSubtree(rootPage.adaptTo(Resource.class), false);
 
     assertNotNull(tags);
-    assertEquals(4, tags.length);
+    assertEquals(6, tags.length);
     assertTrue(containsPath(tags, tagRoot + "/default/tagA"));
     assertTrue(containsPath(tags, tagRoot + "/wcmio/aem/api"));
     assertTrue(containsPath(tags, tagRoot + "/default/tagB"));

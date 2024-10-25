@@ -22,6 +22,7 @@ package io.wcm.testing.mock.aem;
 import static com.day.cq.tagging.TagConstants.TAG_ROOT_PATH;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collection;
 import java.util.Collections;
@@ -34,6 +35,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import javax.jcr.Session;
 
@@ -248,9 +250,9 @@ public final class MockTagManager implements TagManager {
       if (tag == null) {
         return null;
       }
-      Resource tagResource = tag.adaptTo(Resource.class);
-      if (tagResource != null) {
-        tagPaths.add(tagResource.getPath());
+
+      if (!tagPaths.contains(tag.getPath())) {
+        tagPaths.add(tag.getPath());
       }
     }
 
@@ -265,20 +267,9 @@ public final class MockTagManager implements TagManager {
       CollectionUtils.addAll(searchResources, resource.listChildren());
 
       // now process the tags
-      String[] resourceTags = resource.getValueMap().get(TagConstants.PN_TAGS, String[].class);
-      if (resourceTags == null) {
-        continue;
-      }
-
-      List<String> resourceTagPaths = new ArrayList<>(resourceTags.length);
-      try {
-        for (String resourceTag : resourceTags) {
-          resourceTagPaths.add(getPathFromID(resourceTag));
-        }
-      } catch (InvalidTagFormatException e) {
-        log.error("invalid tag id encountered", e);
-      }
-
+      List<String> resourceTagPaths = Arrays.stream(getTags(resource))
+              .map(Tag::getPath)
+              .collect(Collectors.toList());
       if (resourceTagPaths.isEmpty()) {
         continue;
       }
@@ -338,7 +329,7 @@ public final class MockTagManager implements TagManager {
       for (Iterator<Resource> resources = tagRoot.listChildren(); resources.hasNext();) {
         Resource resource = resources.next();
         Tag tag = resource.adaptTo(Tag.class);
-        if (tag != null) {
+        if (tag != null && !namespaces.contains(tag)) {
           namespaces.add(tag);
         }
       }

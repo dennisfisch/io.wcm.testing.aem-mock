@@ -96,7 +96,7 @@ public final class MockAemAdapterFactory implements AdapterFactory {
       return (AdapterType)new MockTemplate(resource);
     }
     if (type == Tag.class && isPrimaryType(resource, NT_TAG)) {
-      return (AdapterType)new MockTag(resource);
+      return (AdapterType)new MockTag(MockTag.resolveSuccessorOrSelf(resource));
     }
     if (type == ContentFragment.class && DamUtil.isAsset(resource)) {
       return (AdapterType)new MockContentFragment(resource);

@@ -28,6 +28,10 @@ import static org.junit.Assert.assertTrue;
 import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.Spliterators;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.apache.sling.api.resource.Resource;
 import org.apache.sling.api.resource.ResourceResolver;
@@ -121,7 +125,7 @@ public class MockTagTest {
       assertEquals(childTag.getName(), childTag.getLocalTagID());
       ++childCount;
     }
-    assertEquals(3, childCount);
+    assertEquals(5, childCount);
 
     assertNotNull(aem);
     children = aem.listChildren();
@@ -160,8 +164,19 @@ public class MockTagTest {
       assertTrue(childTag.getTagID().startsWith(wcmio.getTagID()));
       ++childCount;
     }
-    assertEquals(6, childCount);
+    assertEquals(9, childCount);
 
+  }
+
+  @Test
+  public void testListChildrenSkipsMovedTags() {
+    final Iterator<Tag> children = wcmio.listAllSubTags();
+    final Set<String> tagPaths = StreamSupport.stream(Spliterators.spliteratorUnknownSize(children, 0), false)
+            .map(Tag::getPath)
+            .collect(Collectors.toSet());
+
+    assertFalse(tagPaths.contains(tagRoot + "/wcmio/tag-operations/tag-to-be-merged"));
+    assertFalse(tagPaths.contains(tagRoot + "/wcmio/tag-operations/tag-to-be-moved"));
   }
 
   @Test

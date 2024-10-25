@@ -61,6 +61,34 @@
         "jcr:primaryType": "cq:Tag",
         "sling:resourceType": "cq/tagging/components/tag"
       }
+    },
+    "tag-operations": {
+      "jcr:primaryType": "cq:Tag",
+      "sling:resourceType": "cq/tagging/components/tag",
+      "tag-to-be-merged": {
+        "jcr:primaryType": "cq:Tag",
+        "cq:movedTo": "/content/cq:tags/wcmio/tag-operations/merged-tag",
+        "sling:resourceType": "cq/tagging/components/tag"
+      },
+      "merged-tag": {
+        "jcr:primaryType": "cq:Tag",
+        "sling:resourceType": "cq/tagging/components/tag",
+        "cq:backlinks": [
+          "/content/cq:tags/wcmio/tag-operations/tag-to-be-merged"
+        ]
+      },
+      "tag-to-be-moved": {
+        "jcr:primaryType": "cq:Tag",
+        "cq:movedTo": "/content/cq:tags/wcmio/moved-tag",
+        "sling:resourceType": "cq/tagging/components/tag"
+      }
+    },
+    "moved-tag": {
+      "jcr:primaryType": "cq:Tag",
+      "sling:resourceType": "cq/tagging/components/tag",
+      "cq:backlinks": [
+        "/content/cq:tags/wcmio/tag-operations/tag-to-be-moved"
+      ]
     }
   }
 }

@@ -40,6 +40,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.jackrabbit.util.ISO9075;
 import org.apache.sling.api.adapter.SlingAdaptable;
 import org.apache.sling.api.resource.Resource;
+import org.apache.sling.api.resource.ResourceResolver;
 import org.apache.sling.api.resource.ValueMap;
 import org.jetbrains.annotations.NotNull;
 
@@ -299,7 +300,11 @@ final class MockTag extends SlingAdaptable implements Tag, Comparable<Tag> {
       }
 
       Tag tag = tagResource.adaptTo(Tag.class);
-      if (tag == null) {
+      if (tag == null || tags.contains(tag)) {
+        /*
+         * may happen when the tag was already added from a previous tag
+         * that had its cq:movedTo property set to this resource
+         */
         continue;
       }
 
@@ -410,5 +415,34 @@ final class MockTag extends SlingAdaptable implements Tag, Comparable<Tag> {
             ? pathPartExtractor.apply(property, String.valueOf('/'))
             : defaultValue,
         String.valueOf('@'));
+  }
+
+  /**
+   * Looks into the cq:movedTo property and returns that resource. If the
+   * successor tag also has a successor, the process is repeated until a
+   * final successor is found.
+   *
+   * If no successor is found, the resource passed in is returned.
+   *
+   * If the chain is broken along the path, TagManager throws an NPE.
+   */
+  static Resource resolveSuccessorOrSelf(final Resource resource) {
+    final ValueMap valueMap = resource.getValueMap();
+
+    final String movedToResourcePath = valueMap.get("cq:movedTo", String.class);
+    if (movedToResourcePath == null) {
+      return resource;
+    }
+
+    final ResourceResolver resourceResolver = resource.getResourceResolver();
+    final Resource successorResource = resourceResolver.getResource(movedToResourcePath);
+    if (successorResource == null) {
+      /*
+       * This is what TagManager does.
+       */
+      throw new NullPointerException();
+    }
+
+    return resolveSuccessorOrSelf(successorResource);
   }
 }
